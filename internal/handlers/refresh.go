@@ -3,10 +3,12 @@ package handlers
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"gopkg.in/mail.v2"
 
 	"github.com/volchok96/auth-medods/internal/database/pgsql"
 	"github.com/volchok96/auth-medods/internal/domain/api/response"
@@ -36,6 +38,23 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			log.Error().Msg("failed to get IP")
 			http.Error(w, "failed to get IP", http.StatusInternalServerError)
 			return
+		}
+
+		// send a warning to user's email if ip address has changed
+		if user.IP != clientIP {
+			log.Warn().
+				Str("User email: ", user.Email).
+				Str("Old IP: ", user.IP).
+				Str("New IP: ", clientIP).
+				Msg("IP address changed")
+
+			emailBody := fmt.Sprintf("Query from a new IP address (%s). Was it you?", clientIP)
+			if err := emailWarning(user.Email, emailBody); err != nil {
+				log.Error().
+					Str("err", err.Error()).
+					Msg("failed to send message to email")
+			}
+
 		}
 
 		decodedToken, err := base64.StdEncoding.DecodeString(resp.RefreshToken)
@@ -80,6 +99,28 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(response)
+
+		log.Info().
+			Str("status", "success").
+			Int("code", http.StatusOK).
+			Msg("Successfully sent response")
 	}
 }
 
+func emailWarning(email, bodyString string) error {
+	const op = "handlers.refreshHandler.emailWarning"
+	m := mail.NewMessage()
+
+	m.SetHeader("From", "your_login@gmail.com")
+	m.SetHeader("To", email)
+	m.SetHeader("Subject", "WARNING! IP ADDRESS TO ACCESS MEDODS HAS JUST CHANGED")
+	m.SetBody("text/plain", bodyString)
+
+	d := mail.NewDialer("smtp.gmail.com", 587, "your_login@gmail.com", "your_password")
+
+	if err := d.DialAndSend(m); err != nil {
+		return fmt.Errorf("%s: %w", op, err)
+	}
+
+	return nil
+}

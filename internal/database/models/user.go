@@ -7,4 +7,5 @@ type User struct {
 	UserGUID         uuid.UUID
 	IP           string
 	HashedRefreshToken string
+	Email string
 }

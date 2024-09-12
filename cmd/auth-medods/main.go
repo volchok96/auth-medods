@@ -20,12 +20,14 @@ import (
 const (
 	tokenTTL        = 30 * time.Minute
 	ownKey   string = "volchok96"
-	connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
+	// connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
+	connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
+
 )
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
 	storage, err := pgsql.NewDB(connStr)
 	if err != nil {
