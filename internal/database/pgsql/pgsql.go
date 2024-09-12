@@ -33,24 +33,24 @@ func (db *DB) Close() error {
 
 func (db *DB) UpdateUser(user *models.User) error {
 	query := `
-		INSERT INTO users (user_guid, ip, hashed_refresh_token)
-		VALUES ($1, $2, $3)
+		INSERT INTO users (user_guid, ip, hashed_refresh_token, email)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (user_guid) 
 		DO UPDATE SET ip = $2, hashed_refresh_token = $3
 	`
 
-	_, err := db.db.Exec(query, user.UserGUID, user.IP, user.HashedRefreshToken)
+	_, err := db.db.Exec(query, user.UserGUID, user.IP, user.HashedRefreshToken, user.Email)
 
 	return err
 }
 
 func (db *DB) GetUserByGUID(guid string) (*models.User, error) {
 	user := &models.User{}
-	query := `SELECT id, user_guid, ip, hashed_refresh_token 
+	query := `SELECT id, user_guid, ip, hashed_refresh_token, email 
 		  FROM users 
 		  WHERE user_guid = $1`
 
-	err := db.db.QueryRow(query, guid).Scan(&user.ID, &user.UserGUID, &user.IP, &user.HashedRefreshToken)
+	err := db.db.QueryRow(query, guid).Scan(&user.ID, &user.UserGUID, &user.IP, &user.HashedRefreshToken, user.Email)
 	if err != nil {
 		return nil, err
 	}

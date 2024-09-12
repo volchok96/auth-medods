@@ -81,5 +81,10 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 		if err := json.NewEncoder(w).Encode(response); err != nil {
 			log.Error().Err(err).Msg("failed to encode response")
 		}
+
+		log.Info().
+			Str("status", "success").
+			Int("code", http.StatusOK).
+			Msg("Successfully sent response")
 	}
 }
