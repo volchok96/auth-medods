@@ -26,6 +26,18 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
+		// Логирование входящих данных
+		log.Info().
+			Str("GUID", resp.GUID).
+			Str("RefreshToken", resp.RefreshToken).
+			Msg("Received refresh token request")
+
+		if len(resp.RefreshToken) == 0 {
+			log.Error().Msg("Refresh token is empty")
+			http.Error(w, "refresh token is required", http.StatusBadRequest)
+			return
+		}
+
 		user, err := pgsql.GetUserByGUID(resp.GUID)
 		if err != nil {
 			log.Error().Err(err).Msg("user not found or invalid refresh token")
@@ -40,22 +52,24 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
-		// send a warning to user's email if ip address has changed
+		// send a warning to user's email if IP address has changed
 		if user.IP != clientIP {
 			log.Warn().
-				Str("User email: ", user.Email).
-				Str("Old IP: ", user.IP).
-				Str("New IP: ", clientIP).
+				Str("User email", user.Email).
+				Str("Old IP", user.IP).
+				Str("New IP", clientIP).
 				Msg("IP address changed")
 
 			emailBody := fmt.Sprintf("Query from a new IP address (%s). Was it you?", clientIP)
 			if err := emailWarning(user.Email, emailBody); err != nil {
 				log.Error().
-					Str("err", err.Error()).
+					Err(err).
 					Msg("failed to send message to email")
 			}
-
 		}
+
+		// Логирование перед декодированием
+		log.Info().Str("RefreshToken", resp.RefreshToken).Msg("Decoding refresh token")
 
 		decodedToken, err := base64.StdEncoding.DecodeString(resp.RefreshToken)
 		if err != nil {
@@ -64,22 +78,22 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
-		if err := bcrypt.CompareHashAndPassword([]byte(user.HashedRefreshToken), decodedToken); err != nil {
+		if len(decodedToken) == 0 {
+			log.Error().Msg("decoded token is empty")
+			http.Error(w, "invalid refresh token", http.StatusBadRequest)
+			return
+		}
+
+		err = bcrypt.CompareHashAndPassword([]byte(user.HashedRefreshToken), decodedToken)
+		if err != nil {
 			log.Error().Err(err).Msg("invalid refresh token")
 			http.Error(w, "invalid refresh token", http.StatusUnauthorized)
 			return
 		}
 
-		newAccessToken, err := jwt.GenerateJWT(user.UserGUID.String(), ownKey, clientIP, int(tokenTTL.Hours()))
+		newAccessToken, newRefreshToken, newRefreshTokenHash, err := jwt.NewTokens(user.UserGUID.String(), ownKey, clientIP, int(tokenTTL.Hours()))
 		if err != nil {
-			log.Error().Err(err).Msg("failed to generate new access token")
-			http.Error(w, "failed to generate tokens", http.StatusInternalServerError)
-			return
-		}
-
-		newRefreshToken, newRefreshTokenHash, err := jwt.GenerateRefreshToken()
-		if err != nil {
-			log.Error().Err(err).Msg("failed to generate new refresh token")
+			log.Error().Err(err).Msg("failed to generate new tokens")
 			http.Error(w, "failed to generate tokens", http.StatusInternalServerError)
 			return
 		}
@@ -94,11 +108,16 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 
 		// Token -> base64
 		refreshBase64 := base64.StdEncoding.EncodeToString([]byte(newRefreshToken))
-		response := response.UserResponse{AccessToken: newAccessToken, RefreshToken: refreshBase64}
+		response := response.UserResponse{
+			AccessToken:  newAccessToken,
+			GetRefreshToken: refreshBase64,
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Error().Err(err).Msg("failed to encode response")
+		}
 
 		log.Info().
 			Str("status", "success").

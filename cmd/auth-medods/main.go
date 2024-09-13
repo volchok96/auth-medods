@@ -18,10 +18,10 @@ import (
 
 
 const (
-	tokenTTL        = 30 * time.Minute
+	tokenTTL        = time.Minute
 	ownKey   string = "volchok96"
-	// connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
-	connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
+	connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
+	// connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
 
 )
 
