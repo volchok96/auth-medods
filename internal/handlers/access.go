@@ -34,19 +34,14 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 		clientIP := ip.GetIp(r)
 		if clientIP == "" {
 			log.Error().Msg("failed to get ip")
-		}
-
-		token, err := jwt.GenerateJWT(guid, ownKey, clientIP, int(tokenTTL.Hours()))
-		if err != nil {
-			log.Error().Err(err).Msg("failed to generate access token")
-			http.Error(w, "failed to generate access token", http.StatusBadRequest)
+			http.Error(w, "failed to get IP", http.StatusInternalServerError)
 			return
 		}
 
-		refreshToken, hashedRefreshToken, err := jwt.GenerateRefreshToken()
+		token, refreshToken, hashedRefreshToken, err := jwt.NewTokens(guid, ownKey, clientIP, int(tokenTTL.Hours()))
 		if err != nil {
-			log.Error().Err(err).Msg("failed to generate refresh token")
-			http.Error(w, "failed to generate refresh token", http.StatusBadRequest)
+			log.Error().Err(err).Msg("failed to generate access token")
+			http.Error(w, "failed to generate tokens", http.StatusBadRequest)
 			return
 		}
 
@@ -65,7 +60,7 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 
 		if err := storage.UpdateUser(user); err != nil {
 			log.Error().Err(err).Msg("failed to save hash")
-			http.Error(w, "failed save data", http.StatusInternalServerError)
+			http.Error(w, "failed to save data", http.StatusInternalServerError)
 			return
 		}
 
@@ -73,7 +68,7 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 
 		response := response.UserResponse{
 			AccessToken:  token,
-			RefreshToken: refreshBase64,
+			GetRefreshToken: refreshBase64,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -83,6 +78,8 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 		}
 
 		log.Info().
+			Str("hashed_refresh_token", string(user.HashedRefreshToken)).
+			Str("new_refresh_token", refreshBase64).
 			Str("status", "success").
 			Int("code", http.StatusOK).
 			Msg("Successfully sent response")

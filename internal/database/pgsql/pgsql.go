@@ -36,7 +36,8 @@ func (db *DB) UpdateUser(user *models.User) error {
 		INSERT INTO users (user_guid, ip, hashed_refresh_token, email)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (user_guid) 
-		DO UPDATE SET ip = $2, hashed_refresh_token = $3
+		DO UPDATE SET ip = EXCLUDED.ip, hashed_refresh_token = EXCLUDED.hashed_refresh_token,
+		email = EXCLUDED.email
 	`
 
 	_, err := db.db.Exec(query, user.UserGUID, user.IP, user.HashedRefreshToken, user.Email)
@@ -50,7 +51,7 @@ func (db *DB) GetUserByGUID(guid string) (*models.User, error) {
 		  FROM users 
 		  WHERE user_guid = $1`
 
-	err := db.db.QueryRow(query, guid).Scan(&user.ID, &user.UserGUID, &user.IP, &user.HashedRefreshToken, user.Email)
+	err := db.db.QueryRow(query, guid).Scan(&user.ID, &user.UserGUID, &user.IP, &user.HashedRefreshToken, &user.Email)
 	if err != nil {
 		return nil, err
 	}
