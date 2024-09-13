@@ -8,6 +8,7 @@ import (
 	"github.com/volchok96/auth-medods/internal/database/models"
 )
 
+// DB реализует интерфейс DBInterface
 type DB struct {
 	db *sql.DB
 }
@@ -41,7 +42,6 @@ func (db *DB) UpdateUser(user *models.User) error {
 	`
 
 	_, err := db.db.Exec(query, user.UserGUID, user.IP, user.HashedRefreshToken, user.Email)
-
 	return err
 }
 
