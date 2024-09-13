@@ -11,6 +11,8 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./migrations/000001_create_users_table.up.sql:/docker-entrypoint-initdb.d/000001_create_users_table.up.sql
+      - ./migrations/000002_add_users.up.sql:/docker-entrypoint-initdb.d/000002_add_users_up.sql
 
   app:
     build:

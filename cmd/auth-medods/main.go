@@ -18,10 +18,13 @@ import (
 
 
 const (
-	tokenTTL        = time.Minute
+	tokenTTL        = 30 * time.Minute
 	ownKey   string = "volchok96"
-	connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
-	// connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
+	// 2 строки подключения:
+	// + на localhost
+	// + для развертывания в Docker-контейнерах <docker-compose up --build>
+	// connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
+	connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
 
 )
 
