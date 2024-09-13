@@ -9,18 +9,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
+	"github.com/volchok96/auth-medods/internal/database"
 	"github.com/volchok96/auth-medods/internal/database/models"
-	"github.com/volchok96/auth-medods/internal/database/pgsql"
 	"github.com/volchok96/auth-medods/internal/domain/api/response"
 	"github.com/volchok96/auth-medods/internal/domain/ip"
 	"github.com/volchok96/auth-medods/internal/domain/jwt"
 )
 
-func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) http.HandlerFunc {
+// AccessHandler - хендлер для получения токенов доступа
+func AccessHandler(db database.DBInterface, ownKey string, tokenTTL time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		guid := r.URL.Query().Get("guid")
 		if guid == "" {
-			log.Error().Msg("no guid")
+			log.Error().Msg("no guid provided")
 			http.Error(w, "user_id is required", http.StatusBadRequest)
 			return
 		}
@@ -33,7 +34,7 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 
 		clientIP := ip.GetIp(r)
 		if clientIP == "" {
-			log.Error().Msg("failed to get ip")
+			log.Error().Msg("failed to get IP")
 			http.Error(w, "failed to get IP", http.StatusInternalServerError)
 			return
 		}
@@ -58,7 +59,7 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 			HashedRefreshToken: hashedRefreshToken,
 		}
 
-		if err := storage.UpdateUser(user); err != nil {
+		if err := db.UpdateUser(user); err != nil {
 			log.Error().Err(err).Msg("failed to save hash")
 			http.Error(w, "failed to save data", http.StatusInternalServerError)
 			return
@@ -67,7 +68,7 @@ func AccessHandler(storage *pgsql.DB, ownKey string, tokenTTL time.Duration) htt
 		refreshBase64 := base64.StdEncoding.EncodeToString([]byte(refreshToken))
 
 		response := response.UserResponse{
-			AccessToken:  token,
+			AccessToken:     token,
 			GetRefreshToken: refreshBase64,
 		}
 

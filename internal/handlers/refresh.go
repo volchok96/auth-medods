@@ -10,14 +10,14 @@ import (
 	"github.com/rs/zerolog/log"
 	"gopkg.in/mail.v2"
 
-	"github.com/volchok96/auth-medods/internal/database/pgsql"
+	"github.com/volchok96/auth-medods/internal/database"
 	"github.com/volchok96/auth-medods/internal/domain/api/response"
 	"github.com/volchok96/auth-medods/internal/domain/ip"
 	"github.com/volchok96/auth-medods/internal/domain/jwt"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http.HandlerFunc {
+func RefreshHandler(db database.DBInterface, ownKey string, tokenTTL time.Duration) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var resp response.RefreshToken
 		if err := json.NewDecoder(r.Body).Decode(&resp); err != nil {
@@ -26,7 +26,6 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
-		// Логирование входящих данных
 		log.Info().
 			Str("GUID", resp.GUID).
 			Str("RefreshToken", resp.RefreshToken).
@@ -38,7 +37,7 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
-		user, err := pgsql.GetUserByGUID(resp.GUID)
+		user, err := db.GetUserByGUID(resp.GUID)
 		if err != nil {
 			log.Error().Err(err).Msg("user not found or invalid refresh token")
 			http.Error(w, "permission denied", http.StatusUnauthorized)
@@ -52,7 +51,7 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			return
 		}
 
-		// send a warning to user's email if IP address has changed
+		// Email notification when IP changes
 		if user.IP != clientIP {
 			log.Warn().
 				Str("User email", user.Email).
@@ -68,7 +67,7 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 			}
 		}
 
-		// Логирование перед декодированием
+		// Decode the token
 		log.Info().Str("RefreshToken", resp.RefreshToken).Msg("Decoding refresh token")
 
 		decodedToken, err := base64.StdEncoding.DecodeString(resp.RefreshToken)
@@ -100,16 +99,16 @@ func RefreshHandler(pgsql *pgsql.DB, ownKey string, tokenTTL time.Duration) http
 
 		user.IP = clientIP
 		user.HashedRefreshToken = newRefreshTokenHash
-		if err := pgsql.UpdateUser(user); err != nil {
+		if err := db.UpdateUser(user); err != nil {
 			log.Error().Err(err).Msg("failed to update user")
 			http.Error(w, "failed to update", http.StatusInternalServerError)
 			return
 		}
 
-		// Token -> base64
+		// Convert token to base64
 		refreshBase64 := base64.StdEncoding.EncodeToString([]byte(newRefreshToken))
 		response := response.UserResponse{
-			AccessToken:  newAccessToken,
+			AccessToken:     newAccessToken,
 			GetRefreshToken: refreshBase64,
 		}
 
@@ -135,6 +134,7 @@ func emailWarning(email, bodyString string) error {
 	m.SetHeader("Subject", "WARNING! IP ADDRESS TO ACCESS MEDODS HAS JUST CHANGED")
 	m.SetBody("text/plain", bodyString)
 
+	// Use environment variables for login credentials.
 	d := mail.NewDialer("smtp.gmail.com", 587, "your_login@gmail.com", "your_password")
 
 	if err := d.DialAndSend(m); err != nil {

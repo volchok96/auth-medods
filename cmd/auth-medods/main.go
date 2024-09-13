@@ -22,7 +22,7 @@ const (
 	ownKey   string = "volchok96"
 	// 2 строки подключения:
 	// + на localhost
-	// + для развертывания в Docker-контейнерах <docker-compose up --build>
+	// + для развертывания в Docker-контейнерах
 	// connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
 	connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
 
