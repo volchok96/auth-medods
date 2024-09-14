@@ -4,10 +4,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
+
+	"github.com/joho/godotenv"
 
 	_ "github.com/lib/pq"
 
@@ -65,11 +69,37 @@ func (m *AMockDB) Close() error {
 	return nil
 }
 
+func getDBConnectionString() string {
+	// Определяем, в какой среде работает приложение (docker или local)
+	env := os.Getenv("ENV")
+	if env == "docker" {
+		err := godotenv.Load("../../.env.docker")
+		if err != nil {
+			log.Fatal("Error loading .env.docker file")
+		}
+	} else {
+		err := godotenv.Load("../../.env")
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
+	}
+
+	// Получаем строку подключения к базе данных из переменных окружения
+	connStr := os.Getenv("DB_CONN_STR")
+	if connStr == "" {
+		log.Fatal("DB_CONN_STR not set in environment")
+	}
+	return connStr
+}
 func TestAccessHandler(t *testing.T) {
 	ownKey := "test_key"
 	tokenTTL := 30 * time.Minute
 
-	db, err := sql.Open("postgres", "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable")
+	connStr := getDBConnectionString()
+	log.Printf("Using DB connection string: %s", connStr)
+
+
+	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Fatalf("failed to connect to the database: %v", err)
 	}
@@ -119,4 +149,3 @@ func TestAccessHandler(t *testing.T) {
 		assert.Contains(t, responseBody, "refresh_token")
 	})
 }
-

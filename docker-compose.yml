@@ -7,6 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mypass
+
     ports:
       - "5433:5432"
     volumes:
@@ -18,6 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    environment:
+      APP_ENV: docker
     depends_on:
       - db
     ports:
