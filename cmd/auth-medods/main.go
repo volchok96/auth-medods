@@ -1,12 +1,13 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
-	"net/http"
 
+	"github.com/joho/godotenv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
@@ -16,19 +17,57 @@ import (
 )
 
 
+func loadEnvFile() {
+	env := os.Getenv("APP_ENV")
+	log.Info().Str("APP_ENV", env).Msg("Environment variable APP_ENV detected") // Отладка переменной
 
-const (
-	tokenTTL        = 30 * time.Minute
-	ownKey   string = "volchok96"
-	// 2 строки подключения:
-	// + на localhost
-	// + для развертывания в Docker-контейнерах
-	// connStr         = "postgres://postgres:mypass@localhost:5432/postgres?sslmode=disable"
-	connStr         = "postgres://postgres:mypass@db:5432/postgres?sslmode=disable"
+	if env == "" {
+		env = "local" // По умолчанию использовать локальную среду
+	}
 
-)
+	var err error
+	switch env {
+	case "docker":
+		err = godotenv.Load(".env.docker") // Загрузка файла для Docker
+	default:
+		err = godotenv.Load(".env") // Загрузка локального файла
+	}
+
+	if err != nil {
+		log.Fatal().Msgf("Error loading .env file for environment: %s", env)
+	}
+}
 
 func main() {
+	loadEnvFile()
+
+	// Получение переменных окружения
+	ownKey := os.Getenv("OWN_KEY")
+	tokenTTL, err := time.ParseDuration(os.Getenv("TOKEN_TTL"))
+	if err != nil {
+		log.Fatal().Err(err).Msg("Invalid token TTL")
+	}
+
+	// Подключение к базе данных
+	dbUser := os.Getenv("DB_USER")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	dbHost := os.Getenv("DB_HOST")
+	dbPort := os.Getenv("DB_PORT")
+	dbName := os.Getenv("DB_NAME")
+
+	connStr := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=disable"
+	log.Info().
+		Str("user", dbUser).
+		Str("host", dbHost).
+		Str("port", dbPort).
+		Str("database", dbName).
+		Msgf("Connecting to database with: %s", connStr)
+
+	// Пример работы с zerolog
+	log.Info().
+		Str("ownKey", ownKey).
+		Dur("tokenTTL", tokenTTL).
+		Msg("Configuration loaded successfully")
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 
