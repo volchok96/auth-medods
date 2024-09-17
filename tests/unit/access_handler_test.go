@@ -71,7 +71,7 @@ func (m *AMockDB) Close() error {
 
 func getDBConnectionString() string {
 	// Определяем, в какой среде работает приложение (docker или local)
-	env := os.Getenv("ENV")
+	env := os.Getenv("APP_ENV")
 	if env == "docker" {
 		err := godotenv.Load("../../.env.docker")
 		if err != nil {

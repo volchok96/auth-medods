@@ -5,6 +5,7 @@ services:
     image: postgres:latest
     container_name: db
     environment:
+      POSTGRES_DB: db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mypass
       DB_HOST: db
@@ -13,7 +14,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./migrations/000001_create_users_table.up.sql:/docker-entrypoint-initdb.d/000001_create_users_table.up.sql
-      - ./migrations/000002_add_users_table.up.sql:/docker-entrypoint-initdb.d/000002_add_users_up.sql
+      - ./migrations/000002_add_users_table.up.sql:/docker-entrypoint-initdb.d/000002_add_users_table.up.sql
     networks:
       - medods-network
 
@@ -23,6 +24,11 @@ services:
       dockerfile: Dockerfile
     environment:
       APP_ENV: docker
+      DB_USER: postgres
+      DB_PASSWORD: mypass
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: db
     depends_on:
       - db
     ports:

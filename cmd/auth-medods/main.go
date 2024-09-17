@@ -28,9 +28,9 @@ func loadEnvFile() {
 	var err error
 	switch env {
 	case "docker":
-		err = godotenv.Load(".env.docker") // Загрузка файла для Docker
+		err = godotenv.Load("../../.env.docker") // Загрузка файла для Docker
 	default:
-		err = godotenv.Load(".env") // Загрузка локального файла
+		err = godotenv.Load("../../.env") // Загрузка локального файла
 	}
 
 	if err != nil {
