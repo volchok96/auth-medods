@@ -21,9 +21,8 @@ docker_build:
 	docker build -t auth-medods .
 
 # Запуск Docker-контейнера и выполнение тестов
-# TODO: fix bug with DNS
-# docker_test:
-#	docker run --env-file .env.docker -w /usr/local/src auth-medods-app ./scripts/wait-for-it.sh db:5432 --timeout=60 -- go test -v ./...
+docker_test:
+	docker-compose run app go test -v ./...
 
 # Локальные тесты с покрытием
 test_coverage:
@@ -38,4 +37,4 @@ test_coverage_terminal:
 local: mig_up test_coverage test_coverage_terminal run
 
 # Docker версия: Сборка образа, запуск контейнера
-docker: docker_build docker_up docker_down
+docker: docker_build docker_up docker_test docker_down

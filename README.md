@@ -187,13 +187,19 @@ make test_coverage
 make test_coverage_terminal
 ```
 
+### Docker тесты 
+
+```sh
+make docker_test
+```
+
 ### Локальная версия: Запуск тестов с покрытием и приложения
 
 ```sh
 make local
 ```
 
-### Docker версия: Сборка образа, запуск контейнера
+### Docker версия: Сборка образа, запуск контейнера, запуск тестов
 
 ```sh
 make docker
